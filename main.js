@@ -8,150 +8,115 @@ const tiles = {
 }
 
 class Field {
-  constructor(field) {
+  constructor(field = [[]]) {
     this.field = field
-    this.playerPosition = {
+    this.playerLocation = {
       x: 0,
       y: 0,
     }
-  }
-
-  static generateField(w = 8, h = 16, percentageHoles = 0.3) {
-    const field = Array.from({ length: h }, () =>
-      Array(w).fill(tiles.fieldCharacter)
-    )
-
-    function setPlayerPosition() {
-      const playerPosition = {
-        x: 0,
-        y: 0,
-      }
-
-      field[playerPosition.y][playerPosition.x] = tiles.pathCharacter
-    }
-
-    function setHatPosition() {
-      const hatPosition = {
-        x: Math.floor(Math.random() * w),
-        y: Math.floor(Math.random() * h),
-      }
-
-      if (hatPosition.x === 0 && hatPosition.y === 0) {
-        return setHatPosition()
-      }
-
-      field[hatPosition.y][hatPosition.x] = tiles.hat
-    }
-
-    function setHolePositions() {
-      const numHoles = Math.floor(w * h * percentageHoles)
-
-      for (let i = 0; i < numHoles; i++) {
-        const holePosition = {
-          x: Math.floor(Math.random() * w),
-          y: Math.floor(Math.random() * h),
-        }
-
-        if (
-          (holePosition.x === 0 && holePosition.y === 0) ||
-          field[holePosition.y][holePosition.x] === tiles.hole ||
-          field[holePosition.y][holePosition.x] === tiles.hat
-        ) {
-          i--
-        }
-
-        field[holePosition.y][holePosition.x] = tiles.hole
-      }
-    }
-
-    setPlayerPosition()
-    setHatPosition()
-    setHolePositions()
-
-    return field
-  }
-
-  updateField() {
-    const { x, y } = this.playerPosition
-
-    if (this.field[y] && this.field[y][x]) {
-      this.field[y][x] = tiles.pathCharacter
-    }
-  }
-
-  print() {
-    const grid = this.field
-      .map((row, i, arr) => `${row.join("")}${i < arr.length - 1 ? "\n" : ""}`)
-      .join("")
-
-    console.log(grid)
-  }
-
-  status() {
-    const { x, y } = this.playerPosition
-    const tile = this.field[y] && this.field[y][x]
-
-    const response = {
-      active: true,
-      message: "On the field",
-    }
-
-    function getMessage(tile) {
-      if (!tile) return "Oops! You left the field"
-
-      switch (tile) {
-        case tiles.hole:
-          return "Oh no! You fell in a hole"
-        case tiles.hat:
-          return "Congrats! You found the hat!"
-        default:
-          return "On the field"
-      }
-    }
-
-    if (!tile || tile === tiles.hole || tile === tiles.hat) {
-      response.active = false
-      response.message = getMessage(tile)
-    }
-
-    return response
-  }
-
-  move() {
-    let input = prompt("Which way? ")
-
-    switch (input.toLowerCase()) {
-      case "u":
-        this.playerPosition.y--
-        break
-      case "d":
-        this.playerPosition.y++
-        break
-      case "l":
-        this.playerPosition.x--
-        break
-      case "r":
-        this.playerPosition.x++
-        break
-      default:
-        input = prompt(
-          'Please enter up("u"), down("d"), left("l"), right("r")? '
-        )
-    }
+    this.field[0][0] = tiles.pathCharacter
   }
 
   run() {
-    while (this.status().active) {
-      this.updateField()
+    let playing = true
+
+    while (playing) {
       console.clear()
+
       this.print()
-      this.move()
+      this.askQuestion()
+
+      if (!this.isInBounds()) {
+        console.log("Out of bounds instruction!")
+        playing = false
+        break
+      } else if (this.isHole()) {
+        console.log("Sorry, you fell down a hole!")
+        playing = false
+        break
+      } else if (this.isHat()) {
+        console.log("Congrats, you found your hat!")
+        playing = false
+        break
+      }
+
+      this.field[this.playerLocation.y][this.playerLocation.x] =
+        tiles.pathCharacter
+    }
+  }
+
+  askQuestion() {
+    const answer = prompt("Which way? ").toUpperCase()
+
+    switch (answer) {
+      case "U":
+        this.playerLocation.y--
+        break
+      case "D":
+        this.playerLocation.y++
+        break
+      case "L":
+        this.playerLocation.x--
+        break
+      case "R":
+        this.playerLocation.x++
+        break
+      default:
+        console.log("Enter U, D, L or R.")
+        this.askQuestion()
+        break
+    }
+  }
+
+  isInBounds() {
+    return (
+      this.playerLocation.y >= 0 &&
+      this.playerLocation.x >= 0 &&
+      this.playerLocation.y < this.field.length &&
+      this.playerLocation.x < this.field[0].length
+    )
+  }
+
+  isHat() {
+    return (
+      this.field[this.playerLocation.y][this.playerLocation.x] === tiles.hat
+    )
+  }
+
+  isHole() {
+    return (
+      this.field[this.playerLocation.y][this.playerLocation.x] === tiles.hole
+    )
+  }
+
+  print() {
+    const fieldDisplay = this.field.map((row) => row.join("")).join("\n")
+    console.log(fieldDisplay)
+  }
+
+  static generateField(w = 10, h = 10, percentageHoles = 0.1) {
+    const field = Array.from({ length: h }, () =>
+      Array.from({ length: w }, () =>
+        Math.random() > percentageHoles ? tiles.fieldCharacter : tiles.hole
+      )
+    )
+
+    const hatLocation = {
+      x: Math.floor(Math.random() * w),
+      y: Math.floor(Math.random() * h),
     }
 
-    console.clear()
-    console.log(this.status().message)
+    while (hatLocation.x === 0 && hatLocation.y === 0) {
+      hatLocation.x = Math.floor(Math.random() * w)
+      hatLocation.y = Math.floor(Math.random() * h)
+    }
+
+    field[hatLocation.y][hatLocation.x] = tiles.hat
+
+    return field
   }
 }
 
 const myField = new Field(Field.generateField())
+
 myField.run()
